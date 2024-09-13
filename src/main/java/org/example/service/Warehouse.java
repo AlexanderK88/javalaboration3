@@ -5,11 +5,7 @@ import org.example.entities.Product;
 import org.example.entities.ProductRecord;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.function.Function;
 
@@ -104,7 +100,7 @@ public class Warehouse {
             getProductList()
                     .stream()
                     .filter(p -> !p.lastModified().equals(p.creationDate()))
-                    .toList(), "lastModified", "since creation date"); // fix the text
+                    .toList(), "lastModified", "since creation date"); //fix name
   }
 
   public List<Category> getCategoriesWithProducts(){
@@ -114,21 +110,36 @@ public class Warehouse {
 
     return ifNothingFoundInFilteredList(new ArrayList<>(categories), "category", "with at least one product");
   }
+
   public int countProductsInCategory(Category category){
     int total =  (int) getProductList().stream()
             .filter(p -> p.category().equals(category))
             .count();
     return total;
   }
+
   public Map<Character, Long> numberOfProductsWithSameFirstLetter() {
     return getProductList().stream()
             .map(p -> p.name().charAt(0))
             .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
   }
 
-//  public List<ProductRecord> getProductsWithMaxRatingThisMonth(){
-//}
+  public List<ProductRecord> getProductsWithMaxRatingThisMonth(LocalDate date) {
 
+    OptionalInt opMaxRating = getProductList().stream()
+            .mapToInt(ProductRecord::rating)
+            .max();
+
+    int maxRating = opMaxRating.getAsInt();
+
+    return ifNothingFoundInFilteredList(
+            getProductList().stream()
+                    .filter(p -> p.rating() == maxRating
+                            && !p.creationDate().isBefore(date.withDayOfMonth(1))
+                            && !p.creationDate().isAfter(date))
+                    .sorted(Comparator.comparing(ProductRecord::creationDate))
+                    .toList(), "max", "rating" );
+}
 
   private <T> List<T> ifNothingFoundInFilteredList(List<T> list, String identifier, String identifierName) {
     if (list.isEmpty()) {
