@@ -81,8 +81,8 @@ The Warehouse Management System is a console-based Java application that allows 
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/warehouse-management-system.git
-   cd warehouse-management-system
+   git clone https://github.com/AlexanderK88/javalaboration3.git
+   cd javalaboration3
    ```
 
 2. **Build the Project**
@@ -95,13 +95,7 @@ The Warehouse Management System is a console-based Java application that allows 
 
 ## Running the Application
 
-You can run the application using Maven or directly through your IDE.
-
-### Using Maven
-
-```bash
-mvn exec:java -Dexec.mainClass="org.example.App"
-```
+You can run the application directly through your IDE.
 
 ### Using the IDE
 
