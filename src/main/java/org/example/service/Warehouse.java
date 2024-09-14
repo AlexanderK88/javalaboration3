@@ -3,6 +3,7 @@ package org.example.service;
 import org.example.entities.Category;
 import org.example.entities.Product;
 import org.example.entities.ProductRecord;
+import org.w3c.dom.ls.LSOutput;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -25,33 +26,34 @@ public class Warehouse {
             .filter(p -> p.getId().equals(id))
             .toList();
 
-    ifNothingFoundInFilteredList(filteredProducts, "ID", id);
-
-    if (!filteredProducts.isEmpty()) {
+    if (filteredProducts.isEmpty()) {
+      System.out.println("No product found of ID: " + id);
+      return;
+    }
 
       Product product = filteredProducts.getFirst();
       switch(typOfChange){
         case("category"):
           product.setCategory(Category.valueOf(change.toUpperCase()));
           product.setLastModified(LocalDate.now());
+          System.out.println("Product modified successfully.");
           break;
 
         case("rating"):
           product.setRating(Integer.parseInt(change));
           product.setLastModified(LocalDate.now());
+          System.out.println("Product modified successfully.");
           break;
 
         case("name"):
           product.setName(change);
           product.setLastModified(LocalDate.now());
+          System.out.println("Product modified successfully.");
           break;
 
         default:
           System.out.println("Invalid Input");
       }
-    }else {
-      System.out.println("No products in warehouse");
-    }
   }
 
   public List<ProductRecord> getProductList() {
@@ -126,20 +128,14 @@ public class Warehouse {
 
   public List<ProductRecord> getProductsWithMaxRatingThisMonth(LocalDate date) {
 
-    OptionalInt opMaxRating = getProductList().stream()
-            .mapToInt(ProductRecord::rating)
-            .max();
-
-    int maxRating = opMaxRating.getAsInt();
-
-    return ifNothingFoundInFilteredList(
-            getProductList().stream()
-                    .filter(p -> p.rating() == maxRating
-                            && !p.creationDate().isBefore(date.withDayOfMonth(1))
-                            && !p.creationDate().isAfter(date))
-                    .sorted(Comparator.comparing(ProductRecord::creationDate))
-                    .toList(), "max", "rating" );
-}
+    int MAXRATING = 10;
+      return ifNothingFoundInFilteredList(getProductList().stream()
+                      .filter(p -> p.rating() == MAXRATING //CHANGE THIS IF RATING SCALE CHANGES
+                              && !p.creationDate().isBefore(date.withDayOfMonth(1))
+                              && !p.creationDate().isAfter(date))
+                      .sorted(Comparator.comparing(ProductRecord::creationDate))
+                      .toList(), "rating", String.valueOf(MAXRATING));
+  }
 
   private <T> List<T> ifNothingFoundInFilteredList(List<T> list, String identifier, String identifierName) {
     if (list.isEmpty()) {

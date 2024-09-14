@@ -95,6 +95,9 @@ public class App {
   private static void modifyProduct(Warehouse warehouse) {
     System.out.print("Enter the ID of the product you want to modify: ");
     String id = scanner.nextLine();
+    if (warehouse.getProductsById(id).isEmpty()){
+      return;
+    }
 
     System.out.println("What would you like to modify?");
     System.out.println("1. Category");
@@ -136,7 +139,7 @@ public class App {
 
     if (typOfChange != null && change != null) {
       warehouse.modifyProduct(id, typOfChange, change);
-      System.out.println("Product modified successfully.");
+
     }
   }
 

@@ -6,15 +6,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.mockito.Mockito;
 import org.example.entities.Product;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,16 +26,17 @@ import static org.junit.jupiter.api.Assertions.*;
 class WarehouseTest {
   private Warehouse warehouse;
   private Warehouse warehouseWithNoMaxRating;
-
+  private Warehouse noneModiefiedWarehouse;
 
   private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-  private final PrintStream originalOut = System.out;
 
   private Warehouse emptyWarehouse;
 
   @BeforeEach
   void setUp() {
     // Mock the products
+    outputStream.reset();
+
     Product mockProduct1 = new Product("1", "Product 1", Category.ELECTRONICS, 5, LocalDate.of(2024, 3, 3), LocalDate.of(2024, 3, 4));
     Product mockProduct2 = new Product("2", "Product 2", Category.FURNITURE, 10, LocalDate.of(2024, 3, 3), LocalDate.of(2024, 3, 3));
     Product mockProduct3 = new Product("3", "Product 3", Category.FURNITURE, 10, LocalDate.of(2024, 3, 10), LocalDate.of(2024, 3, 10));
@@ -48,6 +52,10 @@ class WarehouseTest {
     warehouse.addProduct(mockProduct4);
 
     emptyWarehouse = Mockito.spy(new Warehouse());
+
+    noneModiefiedWarehouse = Mockito.spy(new Warehouse());
+    noneModiefiedWarehouse.addProduct(mockProduct2);
+
 
     warehouseWithNoMaxRating = Mockito.spy(new Warehouse());
     warehouseWithNoMaxRating.addProduct(mockProduct1);
@@ -157,8 +165,7 @@ class WarehouseTest {
     @DisplayName("Should return message in console when nothing found")
     void shouldReturnMessageInConsoleWhenNothingFound() {
       warehouseWithNoMaxRating.getProductsWithMaxRatingThisMonth(LocalDate.of(2024, 2, 14));
-      String message = outputStream.toString().trim();
-      assertEquals("No product found of max: rating", message);
+      assertOutputMessage(outputStream, "No product found of rating: 10");
     }
 
     @Test
@@ -197,6 +204,7 @@ class WarehouseTest {
       emptyWarehouse.getCategoriesWithProducts();
       assertOutputMessage(outputStream, "No product found of category: with at least one product");
     }
+
     @Test
     @DisplayName("Should return categories if they have at least one item")
     void shouldReturnCategoriesIfTheyHaveAtLeastOneItem() {
@@ -229,34 +237,35 @@ class WarehouseTest {
   @Nested
   class ModifyProduct extends CommonAssertions {
 
-    @Test
-    @DisplayName("Should modify product category successfully")
-    void shouldModifyProductCategorySuccessfully() {
-      warehouse.modifyProduct("1", "category", "FURNITURE");
-      List<ProductRecord> productList = warehouse.getProductList();
-      ProductRecord modifiedProduct = productList.stream().filter(p -> p.id().equals("1")).findFirst().orElse(null);
+    @ParameterizedTest
+    @CsvSource({
+            "1, category, FURNITURE",
+            "1, rating, 9",
+            "1, name, Product X"
+    })
+    @DisplayName("Should modify product successfully")
+    void shouldModifyProductSuccessfully(String id, String typeOfChange, String change) {
+      warehouse.modifyProduct(id, typeOfChange, change);
+      List<ProductRecord> productList = warehouse.getProductsById(id);
+      ProductRecord modifiedProduct = productList.stream().findFirst().orElse(null);
       assertNotNull(modifiedProduct);
-      assertEquals(Category.FURNITURE, modifiedProduct.category());
-    }
-
-    @Test
-    @DisplayName("Should modify product rating successfully")
-    void shouldModifyProductRatingSuccessfully() {
-      warehouse.modifyProduct("1", "rating", "9");
-      List<ProductRecord> productList = warehouse.getProductList();
-      ProductRecord modifiedProduct = productList.stream().filter(p -> p.id().equals("1")).findFirst().orElse(null);
-      assertNotNull(modifiedProduct);
-      assertEquals(9, modifiedProduct.rating());
-    }
-
-    @Test
-    @DisplayName("Should modify product name successfully")
-    void shouldModifyProductNameSuccessfully() {
-      warehouse.modifyProduct("1", "name", "Product 25");
-      List<ProductRecord> productList = warehouse.getProductList();
-      ProductRecord modifiedProduct = productList.stream().filter(p -> p.id().equals("1")).findFirst().orElse(null);
-      assertNotNull(modifiedProduct);
-      assertEquals("Product 25", modifiedProduct.name());
+      switch (typeOfChange) {
+        case "category":
+          assertEquals(Category.valueOf(change.toUpperCase()), modifiedProduct.category());
+          break;
+        case "rating":
+          assertEquals(Integer.parseInt(change), modifiedProduct.rating());
+          break;
+        case "name":
+          assertEquals(change, modifiedProduct.name());
+          break;
+        default:
+          fail("Unsupported field type");
+      }
+      assertAll(
+              () -> assertEquals(LocalDate.now(), modifiedProduct.lastModified()),
+              () -> assertOutputMessage(outputStream, "Product modified successfully")
+      );
     }
 
     @Test
@@ -292,6 +301,40 @@ class WarehouseTest {
       List<ProductRecord> productList = warehouse.getProductsByCreationDate(date);
       assertThat(productList).isEmpty();
       assertOutputMessage(outputStream, "No product found of creationDate: 2025-01-01");
+    }
+  }
+
+  @Nested
+  class GetModifiedProducts extends CommonAssertions {
+    @Test
+    @DisplayName("Should print message if no modified products are found")
+    void shouldPrintMessageIfNoModifiedProducts() {
+      noneModiefiedWarehouse.getModifiedProducts();
+      String message = outputStream.toString().trim();
+      assertEquals("No product found of lastModified: since creation date", message);
+    }
+
+    @Test
+    @DisplayName("Should return products with different lastModified and creationDate")
+    void shouldReturnProductsWithDifferentLastModified() {
+      List<ProductRecord> modifiedProducts = warehouse.getModifiedProducts();
+      assertProduct1(modifiedProducts.getFirst());
+    }
+
+  }
+
+  @Nested
+  class NumberOfProductWithSameFirstLetters {
+    @Test
+    @DisplayName("Should return map with counted first letters")
+    void shouldMapWithCountedFirstLetters() {
+      Map<Character, Long> productLetterCount = warehouse.numberOfProductsWithSameFirstLetter();
+      Map<Character, Long> expected = new HashMap<>() {
+        {
+          put('P', 4L);
+        }
+      };
+      assertEquals(expected, productLetterCount);
     }
   }
 }
